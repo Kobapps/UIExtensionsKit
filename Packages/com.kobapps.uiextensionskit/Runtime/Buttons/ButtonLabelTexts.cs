@@ -33,6 +33,9 @@ namespace Kobapps.UIExtensionsKit
         [Tooltip("Shown while not interactable — 'Locked', 'Sold out'.")]
         public string disabled;
 
+        [Tooltip("Shown while this is the call to action — 'Play now', 'Claim'.")]
+        public string cta;
+
         /// <summary>The text for <paramref name="state"/>, or empty to leave the label as it is.</summary>
         public string Get(EnhancedButtonVisualState state)
         {
@@ -42,6 +45,7 @@ namespace Kobapps.UIExtensionsKit
                 case EnhancedButtonVisualState.Pressed: return pressed;
                 case EnhancedButtonVisualState.Selected: return selected;
                 case EnhancedButtonVisualState.Disabled: return disabled;
+                case EnhancedButtonVisualState.Cta: return cta;
                 default: return normal;
             }
         }
@@ -50,6 +54,6 @@ namespace Kobapps.UIExtensionsKit
         public bool HasAnyText =>
             !string.IsNullOrEmpty(normal) || !string.IsNullOrEmpty(highlighted)
             || !string.IsNullOrEmpty(pressed) || !string.IsNullOrEmpty(selected)
-            || !string.IsNullOrEmpty(disabled);
+            || !string.IsNullOrEmpty(disabled) || !string.IsNullOrEmpty(cta);
     }
 }

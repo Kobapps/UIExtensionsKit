@@ -8,8 +8,9 @@ namespace Kobapps.UIExtensionsKit
     /// </summary>
     /// <remarks>
     /// Resolution order is fixed and always the same: Disabled beats Pressed beats Highlighted beats
-    /// Selected beats Normal. So a latched tab still shows its press and hover motion, and a
-    /// non-interactable button always reads as disabled no matter what else is true.
+    /// Selected beats Cta beats Normal. So a latched tab still shows its press and hover motion, a
+    /// call to action stops pitching the moment you touch it, and a non-interactable button always
+    /// reads as disabled no matter what else is true.
     /// </remarks>
     public enum EnhancedButtonVisualState
     {
@@ -27,6 +28,17 @@ namespace Kobapps.UIExtensionsKit
 
         /// <summary>Not interactable.</summary>
         Disabled = 4,
+
+        /// <summary>
+        /// The screen's call to action, latched on via <see cref="EnhancedButton.IsCta"/>.
+        /// </summary>
+        /// <remarks>
+        /// Deliberately the lowest-priority state rather than the highest. A CTA button is still an
+        /// ordinary button: it must hover, press and disable like any other, and the attention
+        /// treatment belongs to its <i>resting</i> pose. Ranking it above Highlighted would freeze it
+        /// mid-pitch the moment the player reached for it.
+        /// </remarks>
+        Cta = 5,
     }
 
     /// <summary>
@@ -59,6 +71,9 @@ namespace Kobapps.UIExtensionsKit
 
         /// <summary>Use this button's own animation clips.</summary>
         Clips = 1 << 4,
+
+        /// <summary>Use this button's own shine settings.</summary>
+        Shine = 1 << 5,
     }
 
     /// <summary>How an <see cref="EnhancedButton"/> drives its state motion.</summary>

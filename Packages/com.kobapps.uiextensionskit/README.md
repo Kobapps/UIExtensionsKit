@@ -163,14 +163,20 @@ tabButton.SetSelected(true);              // announces itself: fires the event a
 otherTab.SetSelected(false, notify: false); // goes quiet — what a tab group wants for siblings
 ```
 
+There is a second latch for the one button on the screen that matters most:
+
+```csharp
+playButton.IsCta = true;                  // the primary action — gets the Cta pose and the shine
+```
+
 Resolution order is fixed and never surprises:
 
 ```
-Disabled  >  Pressed  >  Highlighted  >  Selected (latch)  >  Normal
+Disabled  >  Pressed  >  Highlighted  >  Selected (latch)  >  Cta  >  Normal
 ```
 
-So a latched tab still shows its hover and press motion, and a non-interactable button always reads
-as disabled no matter what else is true.
+So a latched tab still shows its hover and press motion, a CTA still presses like everything else,
+and a non-interactable button always reads as disabled no matter what else is true.
 
 ### 3. Sfx and haptics that route anywhere
 
@@ -205,8 +211,16 @@ for you.
 
 - **Glow** follows the button's state — a halo that comes up on hover, changes colour when latched,
   and drops out when disabled.
-- **Shine** sweeps across on a loop, on hover, or on click.
+- **Shine** sweeps across the button. By default its trigger, timing, width, angle and colour come
+  from the **preset**, so it is authored once in the Preset Library and shared by every button using
+  that preset — set `IsCta` and it runs. Turn *Shine From Preset* off for a one-off that has to
+  differ from its preset, and the component's own Loop / OnHover / OnClick modes take over.
 - **Pulse** breathes the glow for a primary action.
+
+The split is deliberate: the kit owns the sweep's *timing* and the adapter only draws it. That is
+why the shine is editable in the Preset Library alongside the rest of the feel, and why a disabled
+button never shines whatever the trigger says — a sheen reads as "interactive", and putting one on a
+dead button is a lie to the player.
 
 One honest note about cost: moving the shine is cheap — UIImageEffectsKit updates only the material.
 Changing the *glow* is not; every edit marks the mesh dirty, because glow reach changes how far the
@@ -223,6 +237,26 @@ there is never a question of which one won.
 Author a handful (Primary, Secondary, Destructive, Tab, CTA) and retuning how the whole game's
 buttons feel is one asset edit. The style's inspector tells you how many buttons in the open scenes
 it drives, and will select them for you.
+
+### Sharing a button with your own animations
+
+Adding an EnhancedButton to a button that something else already animates used to fight it — the
+button would snap back to wherever it sat when it was enabled. It no longer does, for two reasons:
+
+- **It writes only what its preset uses.** Every built-in except `Mechanical` is scale and tint
+  only, so an Animator sliding the button in, or a panel tween moving it, is untouched.
+- **It gives way when something else writes.** If a channel changed since the button last wrote it,
+  the new value becomes the authored pose and the button's motion rides on top, rather than undoing
+  it.
+
+For the remaining case — a preset that *does* use a channel you want to own — clear it under
+**Motion ▸ Writes**:
+
+```csharp
+button.AnimatedChannels &= ~ButtonAnimationChannels.Position;   // an Animator drives position
+```
+
+The inspector spells out what the button will actually write, and so does the debugger window.
 
 ---
 

@@ -74,6 +74,7 @@ namespace Kobapps.UIExtensionsKit.Editor
             Add(_stateBody);
 
             Add(BuildPunch());
+            Add(BuildShine());
             RebuildAll();
         }
 
@@ -88,6 +89,7 @@ namespace Kobapps.UIExtensionsKit.Editor
                 case EnhancedButtonVisualState.Pressed: return "pressed";
                 case EnhancedButtonVisualState.Selected: return "selected";
                 case EnhancedButtonVisualState.Disabled: return "disabled";
+                case EnhancedButtonVisualState.Cta: return "cta";
                 default: return "normal";
             }
         }
@@ -422,6 +424,74 @@ namespace Kobapps.UIExtensionsKit.Editor
 
             return section;
         }
+
+        #endregion
+
+        #region Shine
+
+        private VisualElement BuildShine()
+        {
+            var section = InspectorUI.Section("Shine (CTA)", false, "Kobapps.UIExtensionsKit.ShineSection");
+
+            section.Add(InspectorUI.Muted(
+                "A band of light sweeping across the button. Drawn by an effects module — the CTA " +
+                "trigger runs it whenever the button is marked as the call to action."));
+
+            string shine = $"{_root}.shine";
+            var trigger = new PropertyField(_serialized.FindProperty($"{shine}.trigger"), "Trigger");
+            trigger.Bind(_serialized);
+            section.Add(trigger);
+
+            var body = new VisualElement();
+            section.Add(body);
+
+            body.Add(FloatSliderAt("Sweep duration", $"{shine}.sweepDuration", 0.1f, 3f));
+            body.Add(FloatSliderAt("Interval", $"{shine}.interval", 0f, 10f));
+            body.Add(FloatSliderAt("Width", $"{shine}.width", 0.02f, 1f));
+            body.Add(FloatSliderAt("Softness", $"{shine}.softness", 0f, 1f));
+            body.Add(FloatSliderAt("Angle", $"{shine}.angle", 0f, 360f));
+            body.Add(ColorAt("Colour", $"{shine}.color"));
+
+            // Interval only means anything for the repeating triggers; hiding it beats explaining it.
+            var interval = body[1];
+            void Sync()
+            {
+                SerializedProperty prop = _serialized.FindProperty($"{shine}.trigger");
+                if (prop == null) return;
+
+                var mode = (ButtonShineTrigger)prop.enumValueIndex;
+                body.style.display = mode == ButtonShineTrigger.Off ? DisplayStyle.None : DisplayStyle.Flex;
+                interval.style.display =
+                    mode == ButtonShineTrigger.Cta || mode == ButtonShineTrigger.Always
+                        ? DisplayStyle.Flex
+                        : DisplayStyle.None;
+            }
+
+            Sync();
+            trigger.RegisterValueChangeCallback(_ => Sync());
+
+            return section;
+        }
+
+        private VisualElement ColorAt(string label, string path)
+        {
+            SerializedProperty prop = _serialized.FindProperty(path);
+            var field = new ColorField(label) { value = prop != null ? prop.colorValue : Color.white };
+            field.RegisterValueChangedCallback(e =>
+            {
+                SerializedProperty live = _serialized.FindProperty(path);
+                if (live == null) return;
+
+                live.colorValue = e.newValue;
+                Commit();
+            });
+
+            return field;
+        }
+
+        #endregion
+
+        #region Punch helpers
 
         private VisualElement PunchAxis(string label, string path, int axis)
         {

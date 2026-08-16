@@ -1,6 +1,6 @@
 {
   "name": "com.kobapps.uiextensionskit",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "displayName": "UIExtensionsKit",
   "description": "UI components and utilities for uGUI. Starts with EnhancedButton: a drop-in Button replacement with tween- or AnimationClip-driven state motion (built-in Jelly / Bouncy / Mechanical / Pop / Soft / Rigid presets), a latched Selected state on top of Unity's normal/highlighted/pressed/disabled set, sfx and haptic hooks that route to whatever audio stack the game already has, and shareable Style assets so one asset restyles every button in the project. Animations run on a dependency-free built-in tween backend, or on DOTween if you install it. Optional glow/shine for CTA buttons when UIImageEffectsKit is present. Ships with a live-state inspector and a scene-wide debugger window.",
   "unity": "6000.0",

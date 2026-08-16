@@ -60,6 +60,30 @@ namespace Kobapps.UIExtensionsKit
         /// <summary>Whether this pose needs per-frame curve evaluation rather than a named ease.</summary>
         public bool UsesCustomCurve => ease == UIEase.Custom;
 
+        /// <summary>
+        /// The channels this pose actually moves away from the authored value.
+        /// </summary>
+        /// <remarks>
+        /// A zeroed struct — a state never filled in — reads as identity here rather than as "scale
+        /// to nothing", because <see cref="Sanitized"/> is what repairs it and this is often asked
+        /// before that runs.
+        /// </remarks>
+        public ButtonAnimationChannels UsedChannels
+        {
+            get
+            {
+                var channels = ButtonAnimationChannels.None;
+
+                if (scale != Vector3.zero && scale != Vector3.one) channels |= ButtonAnimationChannels.Scale;
+                if (offset != Vector2.zero) channels |= ButtonAnimationChannels.Position;
+                if (!Mathf.Approximately(rotation, 0f)) channels |= ButtonAnimationChannels.Rotation;
+                if (tint != default && tint != Color.white) channels |= ButtonAnimationChannels.Tint;
+                if (labelTint != default && labelTint != Color.white) channels |= ButtonAnimationChannels.LabelTint;
+
+                return channels;
+            }
+        }
+
         /// <summary>The authored pose, unchanged — the identity of this struct.</summary>
         public static ButtonStateMotion Identity => new ButtonStateMotion
         {
@@ -218,8 +242,14 @@ namespace Kobapps.UIExtensionsKit
         public ButtonStateMotion selected;
         public ButtonStateMotion disabled;
 
+        [Tooltip("Resting pose while this button is the call to action.")]
+        public ButtonStateMotion cta;
+
         [Tooltip("Fired on click, on top of the current state pose.")]
         public ButtonPunch click;
+
+        [Tooltip("A sheen that travels across the button. Usually tied to the Cta state.")]
+        public ButtonShine shine;
 
         /// <summary>The pose for <paramref name="state"/>.</summary>
         public ButtonStateMotion Get(EnhancedButtonVisualState state)
@@ -230,6 +260,7 @@ namespace Kobapps.UIExtensionsKit
                 case EnhancedButtonVisualState.Pressed: return pressed;
                 case EnhancedButtonVisualState.Selected: return selected;
                 case EnhancedButtonVisualState.Disabled: return disabled;
+                case EnhancedButtonVisualState.Cta: return cta;
                 default: return normal;
             }
         }
@@ -243,7 +274,35 @@ namespace Kobapps.UIExtensionsKit
                 case EnhancedButtonVisualState.Pressed: pressed = motion; break;
                 case EnhancedButtonVisualState.Selected: selected = motion; break;
                 case EnhancedButtonVisualState.Disabled: disabled = motion; break;
+                case EnhancedButtonVisualState.Cta: cta = motion; break;
                 default: normal = motion; break;
+            }
+        }
+
+        /// <summary>
+        /// The channels any pose in this set actually moves.
+        /// </summary>
+        /// <remarks>
+        /// An animator uses this to leave untouched channels genuinely untouched, so a preset that
+        /// only scales never writes position and cannot fight whatever else is moving the button.
+        /// See <see cref="ButtonAnimationChannels"/>.
+        /// </remarks>
+        public ButtonAnimationChannels UsedChannels
+        {
+            get
+            {
+                ButtonAnimationChannels channels =
+                    normal.UsedChannels | highlighted.UsedChannels | pressed.UsedChannels
+                    | selected.UsedChannels | disabled.UsedChannels | cta.UsedChannels;
+
+                if (click.enabled && click.duration > 0f)
+                {
+                    if (click.scaleAmplitude != Vector3.zero) channels |= ButtonAnimationChannels.Scale;
+                    if (!Mathf.Approximately(click.rotationAmplitude, 0f))
+                        channels |= ButtonAnimationChannels.Rotation;
+                }
+
+                return channels;
             }
         }
 
@@ -256,6 +315,8 @@ namespace Kobapps.UIExtensionsKit
             set.pressed = set.pressed.Sanitized();
             set.selected = set.selected.Sanitized();
             set.disabled = set.disabled.Sanitized();
+            set.cta = set.cta.Sanitized();
+            set.shine = set.shine.Sanitized();
             if (set.click.oscillations < 1) set.click.oscillations = 1;
             if (set.click.duration < 0f) set.click.duration = 0f;
             return set;

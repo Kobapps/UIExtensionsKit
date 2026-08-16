@@ -101,6 +101,8 @@ namespace Kobapps.UIExtensionsKit
             pressed = ButtonStateMotion.Scaled(1f, 0f, UIEase.Linear),
             selected = ButtonStateMotion.Scaled(1f, 0f, UIEase.Linear),
             disabled = ButtonStateMotion.Scaled(1f, 0f, UIEase.Linear),
+            cta = ButtonStateMotion.Scaled(1f, 0f, UIEase.Linear),
+            shine = ButtonShine.None,
             click = ButtonPunch.Disabled,
         };
 
@@ -112,6 +114,8 @@ namespace Kobapps.UIExtensionsKit
             pressed = ButtonStateMotion.Squashed(1.12f, 0.86f, 0.09f, UIEase.OutQuad),
             selected = ButtonStateMotion.Scaled(1.06f, 0.3f, UIEase.OutBack),
             disabled = ButtonStateMotion.Scaled(1f, 0.15f, UIEase.OutQuad).WithTint(Dimmed).WithLabelTint(LabelDimmed),
+            cta = ButtonStateMotion.Scaled(1.04f, 0.5f, UIEase.OutElastic),
+            shine = ButtonShine.Cta(0.8f, 2.2f),
             click = ButtonPunch.Squash(0.22f, -0.16f, 0.5f, 3, 1.6f),
         };
 
@@ -122,6 +126,8 @@ namespace Kobapps.UIExtensionsKit
             pressed = ButtonStateMotion.Scaled(0.92f, 0.08f, UIEase.OutQuad),
             selected = ButtonStateMotion.Scaled(1.08f, 0.28f, UIEase.OutBack),
             disabled = ButtonStateMotion.Scaled(0.98f, 0.15f, UIEase.OutQuad).WithTint(Dimmed).WithLabelTint(LabelDimmed),
+            cta = ButtonStateMotion.Scaled(1.05f, 0.35f, UIEase.OutBack),
+            shine = ButtonShine.Cta(0.7f, 2f),
             click = ButtonPunch.Uniform(0.18f, 0.38f, 1, 0.7f),
         };
 
@@ -136,6 +142,9 @@ namespace Kobapps.UIExtensionsKit
                 .WithTint(new Color(1.15f, 1.15f, 1.15f, 1f)),
             disabled = ButtonStateMotion.Scaled(1f, 0.08f, UIEase.Linear)
                 .WithTint(new Color(0.5f, 0.5f, 0.5f, 1f)).WithLabelTint(LabelDimmed),
+            cta = ButtonStateMotion.Scaled(1f, 0.06f, UIEase.Linear)
+                .WithTint(new Color(1.12f, 1.12f, 1.12f, 1f)),
+            shine = ButtonShine.Cta(0.5f, 3f),
             click = ButtonPunch.Disabled,
         };
 
@@ -147,6 +156,8 @@ namespace Kobapps.UIExtensionsKit
             selected = ButtonStateMotion.Scaled(1.05f, 0.18f, UIEase.OutBack),
             disabled = ButtonStateMotion.Scaled(1f, 0.15f, UIEase.OutQuad)
                 .WithTint(new Color(0.55f, 0.55f, 0.55f, 1f)).WithLabelTint(LabelDimmed),
+            cta = ButtonStateMotion.Scaled(1.04f, 0.2f, UIEase.OutBack),
+            shine = ButtonShine.Cta(0.6f, 2f),
             click = ButtonPunch.Uniform(0.25f, 0.3f, 1, 0.9f),
         };
 
@@ -157,6 +168,8 @@ namespace Kobapps.UIExtensionsKit
             pressed = ButtonStateMotion.Scaled(0.985f, 0.15f, UIEase.InOutSine),
             selected = ButtonStateMotion.Scaled(1.02f, 0.3f, UIEase.InOutSine),
             disabled = ButtonStateMotion.Scaled(1f, 0.25f, UIEase.InOutSine).WithTint(Faded).WithLabelTint(LabelDimmed),
+            cta = ButtonStateMotion.Scaled(1.02f, 0.35f, UIEase.InOutSine),
+            shine = ButtonShine.Cta(1.1f, 3.2f),
             click = ButtonPunch.Uniform(0.08f, 0.35f, 1, 1.2f),
         };
 
@@ -171,6 +184,9 @@ namespace Kobapps.UIExtensionsKit
                 .WithTint(new Color(1.2f, 1.2f, 1.2f, 1f)),
             disabled = ButtonStateMotion.Scaled(1f, 0.08f, UIEase.OutQuad)
                 .WithTint(new Color(0.5f, 0.5f, 0.5f, 1f)).WithLabelTint(LabelDimmed),
+            cta = ButtonStateMotion.Scaled(1f, 0.08f, UIEase.OutQuad)
+                .WithTint(new Color(1.15f, 1.15f, 1.15f, 1f)),
+            shine = ButtonShine.Cta(0.6f, 2.4f),
             click = ButtonPunch.Disabled,
         };
     }

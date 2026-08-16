@@ -72,6 +72,9 @@ namespace Kobapps.UIExtensionsKit
         /// </remarks>
         public ButtonClipSet Clips => m_Clips;
 
+        /// <summary>The shine this style's preset asks for.</summary>
+        public ButtonShine Shine => ResolveMotion().shine.Sanitized();
+
         /// <summary>Author notes shown in the inspector. Not used at runtime.</summary>
         public string Notes => m_Notes;
 

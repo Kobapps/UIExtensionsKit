@@ -40,7 +40,15 @@ namespace Kobapps.UIExtensionsKit.Samples
         private struct Entry
         {
             public EnhancedButton button;
+
+            [Tooltip("Take the shine from the button's preset and mark the button as the call to " +
+                     "action, so the sweep is whatever the Preset Library says. The recommended " +
+                     "route — the modes below exist for a button that must differ from its preset.")]
+            public bool presetShine;
+
+            [Tooltip("Used only when Preset Shine is off.")]
             public ShineMode shine;
+
             public bool pulse;
         }
 
@@ -70,7 +78,8 @@ namespace Kobapps.UIExtensionsKit.Samples
                     upgraded++;
 
             Report($"UIImageEffectsKit detected — {upgraded} button(s) upgraded to SDF.\n" +
-                   "Glow follows each button's state. Shine sweeps on a loop, on hover, or on click.");
+                   "Glow follows each button's state. The CTA shines from its preset — edit it under " +
+                   "Shine in the Preset Library. The others run the component's own sweep.");
         }
 
         private bool Upgrade(Entry entry, Type sdfImageType, Type effectsType)
@@ -103,8 +112,19 @@ namespace Kobapps.UIExtensionsKit.Samples
 
             Component fx = host.AddComponent(effectsType);
             SetMember(fx, "m_Target", sdf);
-            SetMember(fx, "m_ShineMode", ToEnum(effectsType, "m_ShineMode", (int)entry.shine));
+            SetMember(fx, "m_ShineFromPreset", entry.presetShine);
             SetMember(fx, "m_Pulse", entry.pulse);
+
+            if (entry.presetShine)
+            {
+                // Nothing else to configure: the preset carries the trigger, timing and colour, and
+                // the CTA latch is what switches it on.
+                entry.button.IsCta = true;
+            }
+            else
+            {
+                SetMember(fx, "m_ShineMode", ToEnum(effectsType, "m_ShineMode", (int)entry.shine));
+            }
 
             // AddComponent ran Awake before those assignments landed, so the component decided which
             // effect layers it needed while the shine mode was still Off. Refresh re-resolves it.

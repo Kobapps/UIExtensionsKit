@@ -36,6 +36,7 @@ namespace Kobapps.UIExtensionsKit.Editor
         private bool _previewing;
 
         private VisualElement _motionBody;
+        private Label _channelHint;
         private string _motionSignature;
         private VisualElement _warnings;
         private Label _liveState;
@@ -133,11 +134,15 @@ namespace Kobapps.UIExtensionsKit.Editor
             card.Add(_motionBody);
 
             card.Add(InspectorUI.Field(serializedObject, "m_UnscaledTime", "Unscaled Time"));
+            card.Add(InspectorUI.Field(serializedObject, "m_Channels", "Writes"));
+            _channelHint = InspectorUI.Muted(string.Empty);
+            card.Add(_channelHint);
 
             RebuildMotionBody();
             card.schedule.Execute(() =>
             {
                 card.SetEnabled(!HasStyle);
+                RefreshChannelHint();
 
                 string signature = MotionSignature();
                 if (signature == _motionSignature) return;
@@ -223,15 +228,55 @@ namespace Kobapps.UIExtensionsKit.Editor
         }
 
         /// <summary>
-        /// The latch lives in its own card deliberately. It belongs to this button — a chosen tab,
-        /// an equipped item — never to a shared style, so unlike motion and feedback it must stay
-        /// editable when a style is assigned.
+        /// The latch and the CTA flag live in their own card deliberately. They belong to this
+        /// button — a chosen tab, the one primary action on this screen — never to a shared style,
+        /// so unlike motion and feedback they must stay editable when a style is assigned.
         /// </summary>
         private VisualElement BuildSelectionCard()
         {
             Foldout card = InspectorUI.Section("Selection");
             card.Add(InspectorUI.Field(serializedObject, "m_Selected", "Selected (latched)"));
+            card.Add(InspectorUI.Field(serializedObject, "m_Cta", "Call to action"));
+
+            var hint = InspectorUI.Muted(string.Empty);
+            card.Add(hint);
+            card.schedule.Execute(() =>
+            {
+                var button = target as EnhancedButton;
+                if (button == null) return;
+
+                ButtonShine shine = button.Shine;
+                hint.text = !button.IsCta
+                    ? "The screen's primary action. Drives the Cta pose, and the preset's shine."
+                    : shine.Enabled
+                        ? $"Shining on the {shine.trigger} trigger, {shine.sweepDuration:0.0}s sweep. " +
+                          "Edit it in the preset, under Shine."
+                        : "This preset has no shine. Set one in the Preset Library, under Shine.";
+            }).Every(400);
+
             return card;
+        }
+
+        /// <summary>Describe what the button will genuinely write, and why the rest is left alone.</summary>
+        private void RefreshChannelHint()
+        {
+            if (_channelHint == null) return;
+
+            var button = target as EnhancedButton;
+            if (button == null) return;
+
+            ButtonAnimationChannels used = button.MotionSet.UsedChannels;
+            ButtonAnimationChannels writes = used & button.AnimatedChannels;
+            ButtonAnimationChannels skipped = used & ~button.AnimatedChannels;
+
+            string text = writes == ButtonAnimationChannels.None
+                ? "This preset moves nothing, so the button writes no transform or colour at all."
+                : $"Writes {writes}. Everything else is left to whatever else animates this object.";
+
+            if (skipped != ButtonAnimationChannels.None)
+                text += $" {skipped} is in the preset but switched off here.";
+
+            _channelHint.text = text;
         }
 
         private VisualElement BuildEventsSection()

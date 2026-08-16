@@ -9,10 +9,19 @@ namespace Kobapps.UIExtensionsKit
     /// size, colour or anchoring.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// The state pose and the click punch run as two independent tweens that write to separate
     /// fields and then compose in <see cref="Apply"/>. Doing it that way means a click landing
     /// mid-hover doesn't fight the hover tween or snap the button — the punch simply rides on top of
     /// wherever the state tween currently is.
+    /// </para>
+    /// <para>
+    /// <b>Sharing the button.</b> Two rules keep this out of the way of anything else animating the
+    /// same object. It writes only the channels its preset genuinely uses, so a scale-only preset
+    /// never touches position at all; and when it notices a channel has changed underneath it, it
+    /// adopts the new value as the authored pose instead of stamping it back. Between them, an
+    /// Animator sliding a button in and a preset bouncing it on hover compose rather than fight.
+    /// </para>
     /// </remarks>
     public sealed class TweenButtonAnimator : IEnhancedButtonAnimator
     {
@@ -21,13 +30,25 @@ namespace Kobapps.UIExtensionsKit
         private Graphic _tintTarget;
         private Graphic _labelTarget;
 
-        // The authored pose, captured once. Everything below is expressed as a delta from this.
+        // The authored pose. Everything below is expressed as a delta from this — and it is not
+        // fixed: AdoptExternalChanges re-reads it whenever something else has moved the button.
         private Vector3 _baseScale = Vector3.one;
         private Vector2 _basePosition;
         private Vector3 _baseEuler;
         private Color _baseColor = Color.white;
         private Color _baseLabelColor = Color.white;
         private bool _hasBase;
+
+        // What we last wrote, per channel. A value that no longer matches means somebody else wrote
+        // it, which is the signal to re-baseline rather than fight them.
+        private Vector3 _wroteScale;
+        private Vector2 _wrotePosition;
+        private float _wroteZ;
+        private Color _wroteColor;
+        private Color _wroteLabelColor;
+        private bool _wrote;
+
+        private ButtonAnimationChannels _channels = ButtonAnimationChannels.All;
 
         // Current state-pose values (multipliers / deltas), written by the state tween.
         private Vector3 _stateScale = Vector3.one;
@@ -51,7 +72,7 @@ namespace Kobapps.UIExtensionsKit
             {
                 string stateTween = _stateTween != null && _stateTween.IsActive ? "tweening" : "settled";
                 string punch = _punchTween != null && _punchTween.IsActive ? ", punching" : string.Empty;
-                return $"Tween ({UITween.Active.Id}) — {_state}, {stateTween}{punch}";
+                return $"Tween ({UITween.Active.Id}) — {_state}, {stateTween}{punch}, writes {_channels}";
             }
         }
 
@@ -62,7 +83,27 @@ namespace Kobapps.UIExtensionsKit
             _tintTarget = button != null ? button.TintTarget : null;
             _labelTarget = button != null ? button.LabelTarget : null;
 
+            RefreshChannels();
             CaptureBase();
+        }
+
+        /// <summary>The channels this animator will actually write. Everything else is left alone.</summary>
+        public ButtonAnimationChannels Channels => _channels;
+
+        /// <summary>
+        /// Re-derive which channels to write from the button's motion and its channel mask. Called
+        /// on initialize and whenever the resolved motion changes.
+        /// </summary>
+        public void RefreshChannels()
+        {
+            if (_button == null)
+            {
+                _channels = ButtonAnimationChannels.All;
+                return;
+            }
+
+            _channels = _button.MotionSet.UsedChannels & _button.AnimatedChannels;
+            _wrote = false;
         }
 
         /// <summary>
@@ -84,6 +125,7 @@ namespace Kobapps.UIExtensionsKit
             _baseColor = _tintTarget != null ? _tintTarget.color : Color.white;
             _baseLabelColor = _labelTarget != null ? _labelTarget.color : Color.white;
             _hasBase = true;
+            _wrote = false;
 
             // A button authored at zero scale can never animate back to anything visible.
             if (_baseScale == Vector3.zero) _baseScale = Vector3.one;
@@ -196,26 +238,107 @@ namespace Kobapps.UIExtensionsKit
         {
             if (!_hasBase || _target == null) return;
 
-            Vector3 scale = _stateScale + _punchScale;
-            _target.localScale = new Vector3(
-                _baseScale.x * scale.x,
-                _baseScale.y * scale.y,
-                _baseScale.z * scale.z);
+            AdoptExternalChanges();
 
-            _target.anchoredPosition = _basePosition + _stateOffset;
+            if (Writes(ButtonAnimationChannels.Scale))
+            {
+                Vector3 scale = _stateScale + _punchScale;
+                _wroteScale = new Vector3(
+                    _baseScale.x * scale.x,
+                    _baseScale.y * scale.y,
+                    _baseScale.z * scale.z);
+                _target.localScale = _wroteScale;
+            }
 
-            // Only Z is ours; X and Y stay as authored, so a button deliberately tilted in 3D space
-            // isn't flattened the first time it's hovered.
-            _target.localEulerAngles = new Vector3(
-                _baseEuler.x,
-                _baseEuler.y,
-                _baseEuler.z + _stateRotation + _punchRotation);
+            if (Writes(ButtonAnimationChannels.Position))
+            {
+                _wrotePosition = _basePosition + _stateOffset;
+                _target.anchoredPosition = _wrotePosition;
+            }
 
-            if (_tintTarget != null) _tintTarget.color = _baseColor * _stateTint;
+            if (Writes(ButtonAnimationChannels.Rotation))
+            {
+                // Only Z is ours; X and Y stay as authored, so a button deliberately tilted in 3D
+                // space isn't flattened the first time it's hovered.
+                _wroteZ = _baseEuler.z + _stateRotation + _punchRotation;
+                _target.localEulerAngles = new Vector3(_baseEuler.x, _baseEuler.y, _wroteZ);
+            }
+
+            if (_tintTarget != null && Writes(ButtonAnimationChannels.Tint))
+            {
+                _wroteColor = _baseColor * _stateTint;
+                _tintTarget.color = _wroteColor;
+            }
 
             // The label is tinted separately so a preset can dim the background without washing out
             // the text, which is the usual want for a disabled state.
-            if (_labelTarget != null) _labelTarget.color = _baseLabelColor * _stateLabelTint;
+            if (_labelTarget != null && Writes(ButtonAnimationChannels.LabelTint))
+            {
+                _wroteLabelColor = _baseLabelColor * _stateLabelTint;
+                _labelTarget.color = _wroteLabelColor;
+            }
+
+            _wrote = true;
         }
+
+        private bool Writes(ButtonAnimationChannels channel) => (_channels & channel) != 0;
+
+        /// <summary>
+        /// Re-read the base for any channel that no longer holds what we last wrote.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// If the value changed since our last write, something else owns this object too — an
+        /// Animator, a screen transition, a hand-rolled tween. Rebasing on their value keeps our
+        /// contribution as a delta on top of theirs, which is the only composition that doesn't look
+        /// broken: the alternative is the two systems trading writes every frame and the button
+        /// visibly snapping between them.
+        /// </para>
+        /// <para>
+        /// The very first Apply has nothing to compare against, so it trusts the base captured at
+        /// initialize and skips this.
+        /// </para>
+        /// </remarks>
+        private void AdoptExternalChanges()
+        {
+            if (!_wrote) return;
+
+            if (Writes(ButtonAnimationChannels.Scale) && _target.localScale != _wroteScale)
+            {
+                Vector3 current = _target.localScale;
+                Vector3 factor = _stateScale + _punchScale;
+                _baseScale = new Vector3(
+                    Divide(current.x, factor.x, _baseScale.x),
+                    Divide(current.y, factor.y, _baseScale.y),
+                    Divide(current.z, factor.z, _baseScale.z));
+            }
+
+            if (Writes(ButtonAnimationChannels.Position) && _target.anchoredPosition != _wrotePosition)
+                _basePosition = _target.anchoredPosition - _stateOffset;
+
+            if (Writes(ButtonAnimationChannels.Rotation)
+                && !Mathf.Approximately(_target.localEulerAngles.z, _wroteZ))
+            {
+                Vector3 euler = _target.localEulerAngles;
+                _baseEuler = new Vector3(euler.x, euler.y, euler.z - _stateRotation - _punchRotation);
+            }
+
+            if (_tintTarget != null && Writes(ButtonAnimationChannels.Tint) && _tintTarget.color != _wroteColor)
+                _baseColor = Unmultiply(_tintTarget.color, _stateTint, _baseColor);
+
+            if (_labelTarget != null && Writes(ButtonAnimationChannels.LabelTint)
+                && _labelTarget.color != _wroteLabelColor)
+                _baseLabelColor = Unmultiply(_labelTarget.color, _stateLabelTint, _baseLabelColor);
+        }
+
+        /// <summary>Recover a base from a written value, falling back when the factor cannot be undone.</summary>
+        private static float Divide(float written, float factor, float fallback) =>
+            Mathf.Abs(factor) < 0.0001f ? fallback : written / factor;
+
+        private static Color Unmultiply(Color written, Color factor, Color fallback) => new Color(
+            Divide(written.r, factor.r, fallback.r),
+            Divide(written.g, factor.g, fallback.g),
+            Divide(written.b, factor.b, fallback.b),
+            Divide(written.a, factor.a, fallback.a));
     }
 }

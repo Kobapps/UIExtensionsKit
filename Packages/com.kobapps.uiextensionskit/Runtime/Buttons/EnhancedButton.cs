@@ -59,6 +59,12 @@ namespace Kobapps.UIExtensionsKit
         [Tooltip("Animate on unscaled time, so menus keep moving while the game is paused.")]
         private bool m_UnscaledTime = true;
 
+        [SerializeField]
+        [Tooltip("Channels this button may write. It already leaves alone anything its preset " +
+                 "doesn't use; clear a flag here when something else — an Animator, a screen " +
+                 "transition — should own a channel the preset does use.")]
+        private ButtonAnimationChannels m_Channels = ButtonAnimationChannels.All;
+
         [Header("Targets")]
         [SerializeField]
         [Tooltip("What gets scaled/moved/rotated. Defaults to this button's own RectTransform.")]
@@ -91,6 +97,11 @@ namespace Kobapps.UIExtensionsKit
         [Tooltip("Latched selection — a chosen tab, an equipped item. Independent of EventSystem focus.")]
         private bool m_Selected;
 
+        [SerializeField]
+        [Tooltip("Mark this as the screen's call to action. Drives the Cta resting pose and, when the " +
+                 "preset asks for it, the shine sweep.")]
+        private bool m_Cta;
+
         [Header("Events")]
         [SerializeField] private UnityEvent m_OnHoverEnter = new UnityEvent();
         [SerializeField] private UnityEvent m_OnHoverExit = new UnityEvent();
@@ -108,6 +119,10 @@ namespace Kobapps.UIExtensionsKit
 
         private Graphic _resolvedLabel;
         private bool _labelResolved;
+
+        private bool _shineSweeping;
+        private float _shineTimer;
+        private bool _motionOverride;
 
         private SelectionState _lastSelectionState = SelectionState.Normal;
         private EnhancedButtonVisualState _visualState = EnhancedButtonVisualState.Normal;
@@ -225,6 +240,27 @@ namespace Kobapps.UIExtensionsKit
         public ButtonLabelTexts LabelTexts => m_LabelTexts;
 
         /// <summary>
+        /// The channels this button is permitted to write.
+        /// </summary>
+        /// <remarks>
+        /// An upper bound, not a request: the animator intersects this with the channels its motion
+        /// actually uses, so a scale-only preset writes only scale whatever this says. Narrow it
+        /// when a channel the preset <i>does</i> use belongs to something else — a button whose
+        /// position is driven by an Animator wants Position cleared, and everything else left on.
+        /// </remarks>
+        public ButtonAnimationChannels AnimatedChannels
+        {
+            get => m_Channels;
+            set
+            {
+                if (m_Channels == value) return;
+
+                m_Channels = value;
+                InvalidateConfiguration();
+            }
+        }
+
+        /// <summary>
         /// The motion this button resolves to. Cached, because it is read on every state change and
         /// resolving walks the style and preset asset chain.
         /// </summary>
@@ -239,8 +275,34 @@ namespace Kobapps.UIExtensionsKit
             }
         }
 
+        /// <summary>
+        /// Drive this one button from a motion set built in code, ignoring its preset and style.
+        /// </summary>
+        /// <remarks>
+        /// For buttons whose feel is computed rather than authored — a difficulty selector that
+        /// scales its bounce with the difficulty, a tutorial that dials the emphasis up as the
+        /// player hesitates. <see cref="ClearMotionOverride"/> hands control back.
+        /// </remarks>
+        public void SetMotionOverride(ButtonMotionSet motion)
+        {
+            _resolvedMotion = motion.Sanitized();
+            _motionResolved = true;
+            _motionOverride = true;
+            _animatorDirty = true;
+        }
+
+        /// <summary>Drop a motion override and go back to the preset or style.</summary>
+        public void ClearMotionOverride()
+        {
+            if (!_motionOverride) return;
+
+            _motionOverride = false;
+            InvalidateConfiguration();
+        }
+
         private ButtonMotionSet ResolveMotion()
         {
+            if (_motionOverride) return _resolvedMotion;
             if (UsesStyleFor(ButtonStyleOverride.Preset)) return m_Style.ResolveMotion();
             if (m_Preset != ButtonPresetKind.Custom) return ButtonPresetLibrary.Get(m_Preset);
 
@@ -285,6 +347,42 @@ namespace Kobapps.UIExtensionsKit
             if (value) ButtonFeedback.Play(this, ButtonFeedbackEvent.Select, Feedback);
         }
 
+        /// <summary>
+        /// Whether this is the screen's call to action.
+        /// </summary>
+        /// <remarks>
+        /// Resolves to the <see cref="EnhancedButtonVisualState.Cta"/> resting pose and, when the
+        /// preset's <see cref="ButtonShine"/> is set to the Cta trigger, starts the sheen. Only one
+        /// button per screen should carry it — the whole point is that it stands out.
+        /// </remarks>
+        public bool IsCta
+        {
+            get => m_Cta;
+            set
+            {
+                if (m_Cta == value) return;
+
+                m_Cta = value;
+                RefreshVisualState(instant: false);
+            }
+        }
+
+        /// <summary>
+        /// Where the shine band currently sits, 0 to 1 across its sweep, or -1 when not shining.
+        /// </summary>
+        /// <remarks>
+        /// The kit owns the timing but draws nothing; an effects module reads this and renders the
+        /// band. Keeping the phase here means the sweep is preset-driven and identical whatever is
+        /// doing the drawing.
+        /// </remarks>
+        public float ShinePosition { get; private set; } = -1f;
+
+        /// <summary>The shine this button resolves to, accounting for its style.</summary>
+        public ButtonShine Shine =>
+            !_motionOverride && UsesStyleFor(ButtonStyleOverride.Shine)
+                ? m_Style.ResolveMotion().shine.Sanitized()
+                : MotionSet.shine;
+
         /// <summary>Fired when the pointer enters an interactable button.</summary>
         public UnityEvent OnHoverEnter => m_OnHoverEnter;
 
@@ -314,9 +412,10 @@ namespace Kobapps.UIExtensionsKit
                     return EnhancedButtonVisualState.Highlighted;
 
                 default:
-                    return m_Selected
-                        ? EnhancedButtonVisualState.Selected
-                        : EnhancedButtonVisualState.Normal;
+                    // Selected beats Cta: a chosen tab that also happens to be the CTA should read as
+                    // chosen, since that is the state the player just acted on.
+                    if (m_Selected) return EnhancedButtonVisualState.Selected;
+                    return m_Cta ? EnhancedButtonVisualState.Cta : EnhancedButtonVisualState.Normal;
             }
         }
 
@@ -409,6 +508,9 @@ namespace Kobapps.UIExtensionsKit
             if (!IsActive() || !IsInteractable()) return;
 
             ButtonFeedback.Play(this, ButtonFeedbackEvent.Hover, Feedback);
+
+            if (Shine.trigger == ButtonShineTrigger.OnHover) PlayShineSweep();
+
             m_OnHoverEnter?.Invoke();
         }
 
@@ -475,6 +577,9 @@ namespace Kobapps.UIExtensionsKit
                     _effects[i].OnButtonClicked(this);
 
             ButtonFeedback.Play(this, ButtonFeedbackEvent.Click, Feedback);
+
+            if (Shine.trigger == ButtonShineTrigger.OnClick) PlayShineSweep();
+
             Clicked?.Invoke(this);
         }
 
@@ -530,10 +635,63 @@ namespace Kobapps.UIExtensionsKit
             RefreshVisualState(instant: true, force: true);
         }
 
+        /// <summary>
+        /// Advance the shine sweep. Called by an effects module each frame; the kit keeps the phase so
+        /// the timing is preset-driven rather than reimplemented per backend.
+        /// </summary>
+        /// <returns>The band position 0..1, or -1 when it should not be drawn.</returns>
+        public float TickShine(float deltaTime)
+        {
+            ButtonShine shine = Shine;
+
+            if (!shine.ShouldRun(_visualState, m_Cta))
+            {
+                // One-shot triggers keep running to the end of a sweep already in flight.
+                if (!_shineSweeping) { ShinePosition = -1f; return -1f; }
+            }
+
+            if (_shineSweeping)
+            {
+                _shineTimer += deltaTime;
+                float progress = _shineTimer / Mathf.Max(0.01f, shine.sweepDuration);
+
+                if (progress < 1f)
+                {
+                    ShinePosition = progress;
+                    return ShinePosition;
+                }
+
+                _shineSweeping = false;
+                _shineTimer = shine.Repeats ? 0f : float.MaxValue;
+                ShinePosition = -1f;
+                return -1f;
+            }
+
+            if (!shine.Repeats) return -1f;
+
+            _shineTimer += deltaTime;
+            if (_shineTimer < shine.interval) return -1f;
+
+            _shineSweeping = true;
+            _shineTimer = 0f;
+            ShinePosition = 0f;
+            return 0f;
+        }
+
+        /// <summary>Start a single sweep now, for the one-shot triggers.</summary>
+        public void PlayShineSweep()
+        {
+            if (!Shine.Enabled || _visualState == EnhancedButtonVisualState.Disabled) return;
+
+            _shineSweeping = true;
+            _shineTimer = 0f;
+            ShinePosition = 0f;
+        }
+
         /// <summary>Drop cached configuration so the next read re-resolves style, preset and animator.</summary>
         public void InvalidateConfiguration()
         {
-            _motionResolved = false;
+            _motionResolved = _motionOverride;
             _animatorDirty = true;
             _labelResolved = false;
         }
@@ -661,11 +819,19 @@ namespace Kobapps.UIExtensionsKit
             text.AppendLine($"EnhancedButton '{name}'");
             text.AppendLine($"  Visual state   : {_visualState} (Unity: {_lastSelectionState}, interactable: {IsInteractable()})");
             text.AppendLine($"  Latched        : {m_Selected}");
+            text.AppendLine($"  CTA            : {m_Cta}   shine: {Shine.trigger}" +
+                            $"{(ShinePosition >= 0f ? $" (sweeping at {ShinePosition:0.00})" : string.Empty)}");
             text.AppendLine($"  Style          : {(m_Style != null ? m_Style.name : "<none — using local settings>")}");
             if (m_Style != null)
                 text.AppendLine($"  Overrides      : {(m_Overrides == ButtonStyleOverride.None ? "<none — style supplies everything>" : m_Overrides.ToString())}");
             text.AppendLine($"  Mode / preset  : {AnimationMode} / {Preset}");
             text.AppendLine($"  Unscaled time  : {UseUnscaledTime}");
+
+            // The first question when a button fights something else on the same object is which
+            // channels it is actually touching, so spell out the intersection rather than the mask.
+            ButtonAnimationChannels used = MotionSet.UsedChannels;
+            text.AppendLine($"  Writes         : {used & m_Channels}" +
+                            $"   (preset uses {used}, allowed {m_Channels})");
             text.AppendLine($"  Animator       : {(_animator != null ? _animator.DebugSummary : "<none>")}");
             text.AppendLine($"  Tween backend  : {UITween.Active.Id}");
             text.AppendLine($"  Anim target    : {(AnimationTarget != null ? AnimationTarget.name : "<none>")}");

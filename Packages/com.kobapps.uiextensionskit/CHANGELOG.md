@@ -5,6 +5,37 @@ All notable changes to this package are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] — 2026-08-16
+
+### Added
+
+- **`Cta` visual state** — a second latch, for the one primary action on a screen. Sits between
+  `Selected` and `Normal` in the precedence order, so a CTA still presses and hovers normally.
+  `EnhancedButton.IsCta` drives it.
+- **Shine in the preset** — `ButtonShine` (trigger, sweep duration, interval, width, softness,
+  angle, colour) now travels with the motion set, so it is authored in the Preset Library, shared by
+  every button using that preset, and previewable alongside the rest of the feel. Triggers are
+  `Cta`, `Always`, `OnHover` and `OnClick`; a disabled button never shines.
+  `EnhancedButton.TickShine` owns the phase, `ShinePosition` exposes it, and the UIImageEffectsKit
+  adapter renders it — turn *Shine From Preset* off there for a one-off that must differ.
+- **`ButtonAnimationChannels`** — the transform and colour channels a button may write, exposed as
+  **Motion ▸ Writes** and on `EnhancedButton.AnimatedChannels`. For the case where a preset does use
+  a channel that something else should own.
+- **`SetMotionOverride` / `ClearMotionOverride`** — drive one button from a motion set built in
+  code, ignoring its preset and style.
+- Per-state label text now covers `Cta`.
+
+### Fixed
+
+- **A button no longer fights other animations on the same object.** It writes only the channels its
+  preset actually uses, and when a channel changes underneath it, it adopts the new value as the
+  authored pose instead of stamping it back. Adding an EnhancedButton to a button with an existing
+  position animation used to reset its position; it no longer does.
+- **Elastic presses no longer stick mid-animation.** The tween driver was a `HideAndDontSave`
+  GameObject, which left it scene-less and so never sent `Update` — animations only advanced when
+  something else forced a frame, most visibly as a press that froze until the next input. The driver
+  is now injected into the PlayerLoop and owns no GameObject at all.
+
 ## [0.1.0] — 2026-08-15
 
 First release. The package starts with one component, `EnhancedButton`, and the infrastructure the

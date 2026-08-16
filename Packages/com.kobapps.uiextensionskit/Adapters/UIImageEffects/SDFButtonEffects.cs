@@ -120,7 +120,15 @@ namespace Kobapps.UIExtensionsKit.Adapters
         private float m_PulseUpdatesPerSecond = 30f;
 
         [Header("Shine")]
-        [SerializeField] private SDFShineMode m_ShineMode = SDFShineMode.Off;
+        [SerializeField]
+        [Tooltip("Take the shine from the button's preset, so it is authored once in the Preset " +
+                 "Library and shared by every button using that preset. Turn off only for a " +
+                 "one-off that must differ from its preset.")]
+        private bool m_ShineFromPreset = true;
+
+        [SerializeField]
+        [Tooltip("Used only when 'Shine From Preset' is off.")]
+        private SDFShineMode m_ShineMode = SDFShineMode.Off;
         [SerializeField, Range(0.1f, 3f), Tooltip("Seconds for one sweep across the button.")]
         private float m_ShineDuration = 0.7f;
 
@@ -159,7 +167,9 @@ namespace Kobapps.UIExtensionsKit.Adapters
                 if (m_Target == null) return "SDF effects — no SDF Image found";
 
                 string glow = !m_DriveGlow ? "off" : $"{(_glowVisible ? "visible" : "hidden")} w={_glowWidth:0.00}";
-                string shine = m_ShineMode == SDFShineMode.Off ? "off" : $"{m_ShineMode}/{_shinePhase}";
+                string shine = m_ShineFromPreset
+                    ? (_button != null ? $"preset:{_button.Shine.trigger}" : "preset:?")
+                    : (m_ShineMode == SDFShineMode.Off ? "off" : $"{m_ShineMode}/{_shinePhase}");
                 return $"SDF effects on '{m_Target.name}' — glow: {glow}, shine: {shine}";
             }
         }
@@ -203,6 +213,12 @@ namespace Kobapps.UIExtensionsKit.Adapters
             ApplyGlowState(GlowFor(_state), instant: true);
         }
 
+        /// <summary>Whether anything wants a shine, from whichever source is in charge.</summary>
+        private bool WantsShine =>
+            m_ShineFromPreset
+                ? _button != null && _button.Shine.Enabled
+                : m_ShineMode != SDFShineMode.Off;
+
         private void Resolve()
         {
             if (m_Target == null) m_Target = GetComponent<SDFImage>();
@@ -225,7 +241,7 @@ namespace Kobapps.UIExtensionsKit.Adapters
             }
 
             _hasShine = m_Target.TryGetEffect<SDFShineEffect>(out _);
-            if (!_hasShine && m_AutoAddEffects && m_ShineMode != SDFShineMode.Off)
+            if (!_hasShine && m_AutoAddEffects && WantsShine)
             {
                 // Front of the stack: a sheen reads as light on the surface, so it sits on top.
                 m_Target.AddEffect(new SDFShineEffect { position = 0f }, front: true);
@@ -242,7 +258,8 @@ namespace Kobapps.UIExtensionsKit.Adapters
 
             ApplyGlowState(GlowFor(state), instant);
 
-            if (m_ShineMode == SDFShineMode.OnHover && state == EnhancedButtonVisualState.Highlighted)
+            if (!m_ShineFromPreset && m_ShineMode == SDFShineMode.OnHover
+                && state == EnhancedButtonVisualState.Highlighted)
                 StartSweep();
 
             if (m_SuppressShineWhenDisabled && state == EnhancedButtonVisualState.Disabled)
@@ -255,7 +272,7 @@ namespace Kobapps.UIExtensionsKit.Adapters
         /// <inheritdoc/>
         public override void OnButtonClicked(EnhancedButton button)
         {
-            if (m_ShineMode == SDFShineMode.OnClick) StartSweep();
+            if (!m_ShineFromPreset && m_ShineMode == SDFShineMode.OnClick) StartSweep();
         }
 
         private SDFGlowState GlowFor(EnhancedButtonVisualState state)
@@ -383,7 +400,36 @@ namespace Kobapps.UIExtensionsKit.Adapters
 
         private void UpdateShine(float deltaTime)
         {
-            if (!_hasShine || m_ShineMode == SDFShineMode.Off) return;
+            if (!_hasShine) return;
+
+            if (m_ShineFromPreset)
+            {
+                // The kit owns the timing so the sweep is identical whatever draws it; this only
+                // renders the phase and applies the band's shape from the same preset.
+                if (_button == null) return;
+
+                float position = _button.TickShine(deltaTime);
+                ButtonShine shine = _button.Shine;
+
+                if (position < 0f)
+                {
+                    ParkShine();
+                    return;
+                }
+
+                m_Target.Modify<SDFShineEffect>(band =>
+                {
+                    band.position = position;
+                    band.width = shine.width;
+                    band.softness = shine.softness;
+                    band.angle = shine.angle;
+                    band.color = shine.color;
+                });
+
+                return;
+            }
+
+            if (m_ShineMode == SDFShineMode.Off) return;
 
             switch (_shinePhase)
             {
