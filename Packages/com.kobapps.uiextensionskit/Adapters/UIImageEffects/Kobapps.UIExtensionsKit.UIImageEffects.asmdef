@@ -1,0 +1,26 @@
+{
+    "name": "Kobapps.UIExtensionsKit.UIImageEffects",
+    "rootNamespace": "Kobapps.UIExtensionsKit.Adapters",
+    "references": [
+        "Kobapps.UIExtensionsKit",
+        "SDFImageKit.Runtime",
+        "UnityEngine.UI"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [
+        "UIEXTENSIONSKIT_UIIMAGEEFFECTS"
+    ],
+    "versionDefines": [
+        {
+            "name": "com.kobapps.uiimageeffectskit",
+            "expression": "1.0.0",
+            "define": "UIEXTENSIONSKIT_UIIMAGEEFFECTS"
+        }
+    ],
+    "noEngineReferences": false
+}

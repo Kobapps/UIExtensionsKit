@@ -1,0 +1,26 @@
+{
+    "name": "Kobapps.UIExtensionsKit.Tests.Editor",
+    "rootNamespace": "Kobapps.UIExtensionsKit.Tests",
+    "references": [
+        "Kobapps.UIExtensionsKit",
+        "Kobapps.UIExtensionsKit.Editor",
+        "UnityEngine.UI",
+        "UnityEngine.TestRunner",
+        "UnityEditor.TestRunner"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

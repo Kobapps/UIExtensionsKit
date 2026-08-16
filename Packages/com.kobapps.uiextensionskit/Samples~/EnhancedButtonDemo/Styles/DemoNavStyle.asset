@@ -1,0 +1,28 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 250b417c74e03f74ab132ae92c82bf01, type: 3}
+  m_Name: DemoNavStyle
+  m_EditorClassIdentifier: Kobapps.UIExtensionsKit::Kobapps.UIExtensionsKit.EnhancedButtonStyle
+  m_AnimationMode: 1
+  m_Preset: 3
+  m_CustomPreset: {fileID: 0}
+  m_UnscaledTime: 1
+  m_Feedback:
+    hoverSfx: ui_hover
+    pressSfx: 
+    clickSfx: ui_tab
+    rejectedSfx: ui_denied
+    hoverHaptic: 0
+    pressHaptic: 0
+    clickHaptic: 2
+    rejectedHaptic: 6
+  m_Notes: Shipped with the UIExtensionsKit demo. Every button using it changes together.

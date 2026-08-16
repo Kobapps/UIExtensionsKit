@@ -1,0 +1,21 @@
+{
+    "name": "Kobapps.UIExtensionsKit.Editor",
+    "rootNamespace": "Kobapps.UIExtensionsKit.Editor",
+    "references": [
+        "Kobapps.UIExtensionsKit",
+        "EditorCoreKit.Editor",
+        "UnityEngine.UI",
+        "UnityEditor.UI"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

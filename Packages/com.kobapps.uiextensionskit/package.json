@@ -1,0 +1,46 @@
+{
+  "name": "com.kobapps.uiextensionskit",
+  "version": "0.1.0",
+  "displayName": "UIExtensionsKit",
+  "description": "UI components and utilities for uGUI. Starts with EnhancedButton: a drop-in Button replacement with tween- or AnimationClip-driven state motion (built-in Jelly / Bouncy / Mechanical / Pop / Soft / Rigid presets), a latched Selected state on top of Unity's normal/highlighted/pressed/disabled set, sfx and haptic hooks that route to whatever audio stack the game already has, and shareable Style assets so one asset restyles every button in the project. Animations run on a dependency-free built-in tween backend, or on DOTween if you install it. Optional glow/shine for CTA buttons when UIImageEffectsKit is present. Ships with a live-state inspector and a scene-wide debugger window.",
+  "unity": "6000.0",
+  "license": "MIT",
+  "documentationUrl": "https://github.com/Kobapps/UIExtensionsKit#readme",
+  "changelogUrl": "https://github.com/Kobapps/UIExtensionsKit/blob/main/CHANGELOG.md",
+  "licensesUrl": "https://github.com/Kobapps/UIExtensionsKit/blob/main/LICENSE.md",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Kobapps/UIExtensionsKit.git"
+  },
+  "dependencies": {
+    "com.unity.ugui": "2.0.0"
+  },
+  "relatedPackages": {
+    "com.kobapps.editorcorekit": "2.0.0",
+    "com.kobapps.uiimageeffectskit": "1.6.4"
+  },
+  "keywords": [
+    "ui",
+    "ugui",
+    "button",
+    "juice",
+    "tween",
+    "animation",
+    "haptics",
+    "sfx",
+    "feedback",
+    "cta",
+    "dotween"
+  ],
+  "author": {
+    "name": "Kobapps",
+    "url": "https://github.com/Kobapps"
+  },
+  "samples": [
+    {
+      "displayName": "Enhanced Button Demo",
+      "description": "A ready-to-play scene — import it and press Play, nothing to build. Six sections behind a latched nav bar: every built-in preset side by side, a state playground where Disabled beats the latch, a level grid where locked levels answer a tap with the Rejected cue, a shop where affordability drives 'interactable', a pause overlay at timeScale 0 proving buttons keep animating on unscaled time, and an Effects section of shaped CTA buttons that upgrade themselves to SDF glow and shine when UIImageEffectsKit is installed. A live panel logs every sfx and haptic request, and the mute toggles show them being suppressed. Open Scenes/UIExtensionsKitDemo.unity.",
+      "path": "Samples~/EnhancedButtonDemo"
+    }
+  ]
+}
